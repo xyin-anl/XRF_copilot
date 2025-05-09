@@ -1,8 +1,6 @@
 from nodeology.node import Node
 from .utils import record_messages
 
-import chainlit as cl
-from chainlit import Message, run_sync
 
 survey = Node(
     node_type="survey",
@@ -20,15 +18,8 @@ If all questions have been asked, output exactly "COLLECT_COMPLETE".""",
     use_conversation=True,
 )
 
+
 def survey_pre_process(state, client, **kwargs):
-    # run_sync(
-    #     Message(
-    #         content="Test:",
-    #         elements=[cl.CustomElement(name="DataDisplay", props={"data": 'test'})],
-
-    #     ).send()
-    # )
-
     if "questions" not in state and "questions" not in kwargs:
         raise ValueError(f"Questions state not found")
 
@@ -37,30 +28,40 @@ def survey_pre_process(state, client, **kwargs):
         state["begin_conversation"] = True
         state["end_conversation"] = False
         return state
-    
+
     state["conversation"].append({"role": "user", "content": state["human_input"]})
     return state
 
+
 def survey_post_process(state, client, **kwargs):
     collector_response = state["collector_response"]
-    # run_sync(
-    #     Message(
-    #         content=f"Next question:", elements=[cl.Text(content=collector_response)]
-    #     ).send()
-    # )
     if "COLLECT_COMPLETE" in collector_response:
-        record_messages(state, [("assistant", f"{state['agent_nickname']}: Thank you for your answers!", "green")])
+        record_messages(
+            state,
+            [
+                (
+                    "assistant",
+                    f"{state['agent_nickname']}: Thank you for your answers!",
+                    "green",
+                )
+            ],
+        )
         state["conversation"].append(
             {"role": "assistant", "content": "Thank you for your answers!"}
         )
         state["begin_conversation"] = False
         state["end_conversation"] = True
         from .conversation_summarizer import conversation_summarizer
+
         return conversation_summarizer(state, client, **kwargs)
 
-    record_messages(state, [("assistant", f"{state['agent_nickname']}: {collector_response}", "green")])
+    record_messages(
+        state,
+        [("assistant", f"{state['agent_nickname']}: {collector_response}", "green")],
+    )
     state["conversation"].append({"role": "assistant", "content": collector_response})
     return state
 
+
 survey.pre_process = survey_pre_process
-survey.post_process = survey_post_process 
+survey.post_process = survey_post_process
